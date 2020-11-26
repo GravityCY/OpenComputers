@@ -1,7 +1,8 @@
 local component = require("component")
 local sides = require("sides")
+local robot = require("gaybot")
 local navigation = component.navigation
-local chargerRelPos = {x=-45.5, y=68.5, z=-57.5}
+local chargerRelPos = {x=-53.5, y=69.5, z=-56.5}
 
 --[[
     Back:   north,  negZ,   Number: 2
@@ -10,12 +11,45 @@ local chargerRelPos = {x=-45.5, y=68.5, z=-57.5}
     Left:   east,   posX,   Number: 5
 ]]--
 
+--[[
+    Front:  south,  posZ,   Number: 1
+    Right:  west,   negX,   Number: 2
+    Back:   north,  negZ,   Number: 3
+    Left:   east,   posX,   Number: 4
+]]--
+
+local function SideToString(number)
+    if number == 1 then return "posZ" end
+    if number == 2 then return"negX" end
+    if number == 3 then return "negZ" end
+    if number == 4 then return "posX" end
+    return side
+end
+
+local function Mine(number)
+    if number == 3 then return 1 end
+    if number == 4 then return 2 end
+    if number == 2 then return 3 end
+    if number == 5 then return 4 end
+end
+
+local function Yours(number)
+    if number == 1 then return 3 end
+    if number == 2 then return 4 end
+    if number == 3 then return 2 end
+    if number == 4 then return 5 end
+end
+
 -- Will face towards a given side
 local function FaceSide(side)
     local robotFacing = navigation.getFacing()
-    print("Currently facing towards " .. robotFacing)
-    print("Starting to face towards " .. side .. "...")
-    robot.turnLeft()
+    robotFacing = Mine(robotFacing)
+    turns = side - robotFacing 
+
+    if turns == -3 then turns = 1 end
+    if turns == 3 then turns = -1 end
+    if turns < 0 then tempTurns = math.abs(turns) robot.turnLeft(tempTurns) end
+    if turns > 0 then robot.turnRight(turns) end
 end
 
 -- Will return a direction between two vectors
@@ -24,14 +58,10 @@ local function GetTargetDirection(target)
     local relPos = {x = tempX, z = tempZ}
     local diff = {x = target.x-relPos.x , z = target.z-relPos.z}
 
-    print("Relative Position: x = " .. relPos.x .. ", z = " .. relPos.z)
-    print("Target Position: x = " .. target.x .. ", z = " .. target.z)
-    print("diff.x = " .. diff.x .. " diff.z = " .. diff.z)
-
     if math.abs(diff.x) > math.abs(diff.z) then
-        if diff.x < 0 then return sides.negx else return sides.posx end
+        if diff.x < 0 then return 2 else return 4 end
     else
-        if diff.z < 0 then return sides.negz else return sides.posz end
+        if diff.z < 0 then return 3 else return 1 end
     end
 end
 
@@ -40,9 +70,40 @@ local function FaceTarget(target)
     FaceSide(direction)
 end
 
-local function GoToTarget(target)
-    local relPos = navigation.getPosition()
-    
+local function WalkToTarget(target)
+    local tempX,tempY,tempZ = navigation.getPosition()
+    local relPos = {x = tempX, y = tempY, z = tempZ}
+    if relPos.x ~= target.x then
+        local difference = target.x - relPos.x
+        if difference > 0 then FaceSide(4) else FaceSide(2) end
+        for i = 1, math.abs(difference) do
+            robot.forward()
+        end
+    end
+    if relPos.y ~= target.y then
+        local difference = target.y - relPos.y
+        local dir = "Up"
+        if difference > 0 then dir = "Up" else dir = "Down" end
+        for i = 1, math.abs(difference) do
+            if dir == "Up" then robot.up() else robot.down() end
+        end
+    end
+    if relPos.z ~= target.z then
+        local difference = target.z - relPos.z
+        if difference > 0 then FaceSide(1) else FaceSide(3) end
+        for i = 1, math.abs(difference) do
+            robot.forward()
+        end
+    end
 end
 
-FaceTarget(chargerRelPos)
+local function GoToTarget(target)
+    while true do 
+        WalkToTarget(target)
+        local tempX,tempY,tempZ = navigation.getPosition()
+        local relPos = {x = tempX,y = tempY, z = tempZ}
+        if relPos.x == target.x and relPos.y == target.y and relPos.z == target.z then print("At target lol") break end
+    end
+end
+
+GoToTarget(chargerRelPos)

@@ -53,6 +53,23 @@ local function swing(direction, repeats)
     return true
 end
 
+local function turn(direction, repeats)
+    repeats = repeats or 1
+
+    if repeats == 1 then
+        if direction == "Left" then return bot.turnLeft() end
+        if direction == "Right" then return bot.turnRight() end
+        if direction == "Back" then bot.turnRight() return bot.turnRight() end
+    else
+        for i = 1, repeats do
+            if direction == "Left" then bot.turnLeft() end
+            if direction == "Right" then bot.turnRight() end
+            if direction == "Back" then bot.turnRight() bot.turnRight() end
+        end
+    end
+    return true
+end
+
 -- Will go towards a direction and if obstructed by specified obstacles will just pause / hang until able to move again
 -- Is repeatable
 -- It will only say it was succesful when it is finally able to finish the moves
@@ -159,17 +176,16 @@ function robot.left(pauseIfObstruct, breakIfObstruct)
     return forward(pauseIfObstruct, breakIfObstruct)
 end
 
-function robot.turnLeft()
-    return bot.turnLeft()
+function robot.turnLeft(repeats)
+    return turn("Left", repeats)
 end
 
-function robot.turnRight()
-    return bot.turnRight()
+function robot.turnRight(repeats)
+    return turn("Right", repeats)
 end
 
-function robot.turnAround()
-    bot.turnRight()
-    return bot.turnRight()
+function robot.turnAround(repeats)
+    return bot.turnAround("Back", repeats)
 end
 
 function robot.drop()
