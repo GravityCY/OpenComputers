@@ -15,18 +15,22 @@ local robot = {}
  Example it tries to go 3 times forward without being able to relay information-
  -on whether they were succesful
 --]]
-local function go(direction, repeats)
+function robot.go(direction, repeats)
     repeats = repeats or 1
 
     if repeats == 1 then
         if direction == "Forward" then return bot.forward() end
         if direction == "Back" then return bot.back() end
+        if direction == "Left" then bot.turnLeft() return bot.forward() end
+        if direction == "Right" then bot.turnRight() return bot.forward() end
         if direction == "Up" then return bot.up() end
         if direction == "Down" then return bot.down() end
     else
         for i = 1, repeats do
             if direction == "Forward" then bot.forward() end
             if direction == "Back" then bot.back() end
+            if direction == "Left" then bot.turnLeft() bot.forward() end
+            if direction == "Right" then bot.turnRight() bot.forward() end
             if direction == "Up" then bot.up() end
             if direction == "Down" then bot.down() end
         end
@@ -74,6 +78,25 @@ local function turn(direction, repeats)
     return true
 end
 
+local function detect(direction, filter)
+    direction = direction or "Forward"
+    if filter == nil then
+        if direction == "Forward" then return bot.detect() end
+        if direction == "Back" then turn("Back") local info = bot.detect() turn("Back") return info end
+        if direction == "Left" then turn("Left") local info = bot.detect() turn("Right") return info end
+        if direction == "Right" then turn("Right") local info = bot.detect() turn("Left") return info end
+        if direction == "Up" then return bot.detectUp() end
+        if direction == "Down" then return bot.detectDown() end
+    else
+        if direction == "Forward" then return ({bot.detect()})[2] == filter end
+        if direction == "Back" then turn("Back") local info = ({bot.detect()})[2] == filter turn("Back") return info end
+        if direction == "Left" then turn("Left") local info = ({bot.detect()})[2] == filter turn("Right") return info end
+        if direction == "Right" then turn("Right") local info = ({bot.detect()})[2] == filter turn("Left") return info end
+        if direction == "Up" then return ({bot.detectUp()})[2] == filter end
+        if direction == "Down" then return ({bot.detectDown()})[2] == filter end
+    end
+end
+
 --[[
     Will go towards a direction and if obstructed by specified obstacles will just pause / hang until able to move again
     Is repeatable
@@ -85,7 +108,7 @@ local function goPause(direction, repeats)
 
     for i = 1, repeats do
         while true do 
-            success, info = go(direction)
+            local success, info = robot.go(direction)
             if not success and info == obstacleInfo[2] or info == obstacleInfo[1] then
                 os.sleep(sleepTime)
             end
@@ -108,7 +131,7 @@ local function goBreak(direction, repeats, hangIfUnbreakable)
 
     for i = 1, repeats do
         while true do 
-            success, info = go(direction)
+            local success, info = robot.go(direction)
             if not success and info == obstacleInfo[2] then
                 swing(direction)
             end
@@ -130,7 +153,7 @@ function robot.up(pauseIfObstruct, breakIfObstruct, repeats)
     end
     if breakIfObstruct then
         return goBreak(dir, repeats, true)
-    else return go(dir) end
+    else return robot.go(dir) end
 end
 
 function robot.down(pauseIfObstruct, breakIfObstruct, repeats)
@@ -144,8 +167,9 @@ function robot.down(pauseIfObstruct, breakIfObstruct, repeats)
     end
     if breakIfObstruct then
         return goBreak(dir, repeats, true)
-    else return go(dir) end
+    else return robot.go(dir) end
 end
+
 
 function robot.forward(pauseIfObstruct, breakIfObstruct, repeats)
     local dir = "Forward"
@@ -158,7 +182,7 @@ function robot.forward(pauseIfObstruct, breakIfObstruct, repeats)
     end
     if breakIfObstruct then
         return goBreak(dir, repeats, true)
-    else return go(dir) end
+    else return robot.go(dir) end
 end
   
 function robot.back(pauseIfObstruct, breakIfObstruct, repeats)
@@ -172,12 +196,12 @@ function robot.back(pauseIfObstruct, breakIfObstruct, repeats)
     end
     if breakIfObstruct then
         return goBreak(dir, repeats, true)
-    else return go(dir) end
+    else return robot.go(dir) end
 end
 
 function robot.right(pauseIfObstruct, breakIfObstruct)
     bot.turnRight()
-    return forward(pauseIfObstruct, breakIfObstruct)
+    return robot.forward(pauseIfObstruct, breakIfObstruct)
 end
 
 function robot.left(pauseIfObstruct, breakIfObstruct)
@@ -194,7 +218,7 @@ function robot.turnRight(repeats)
 end
 
 function robot.turnAround(repeats)
-    return bot.turnAround("Back", repeats)
+    return bot.turn("Back", repeats)
 end
 
 function robot.drop()
@@ -224,16 +248,28 @@ function robot.select(itemSlot)
     return bot.select(itemSlot)
 end
 
-function robot.detect()
-    return bot.detect()
+function robot.detect(filter)
+    return detect("Forward", filter)
 end
 
-function robot.detectUp()
-    return bot.detectUp()
+function robot.detectBack(filter)
+    return detect("Back", filter)
 end
 
-function robot.detectDown()
-    return bot.detectDown()
+function robot.detectLeft(filter)
+    return detect("Left", filter)
+end
+
+function robot.detectRight(filter)
+    return detect("Right", filter)
+end
+
+function robot.detectUp(filter)
+    return detect("Up", filter)
+end
+
+function robot.detectDown(filter)
+    return detect("Down", filter)
 end
 
 return robot

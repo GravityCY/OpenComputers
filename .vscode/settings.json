@@ -1,0 +1,8 @@
+{
+    "Lua.diagnostics.globals": [
+        "tempTurns"
+    ],
+    "Lua.diagnostics.disable": [
+        "unused-function"
+    ]
+}
