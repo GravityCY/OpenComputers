@@ -1,4 +1,4 @@
-local robot = require("robot")
+local robot = require("betterbot")
 local comp = require("component")
 local geo = comp.geolyzer
 

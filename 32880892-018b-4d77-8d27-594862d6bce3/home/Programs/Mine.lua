@@ -1,4 +1,4 @@
-local robot = require("gaybot")
+local robot = require("betterbot")
 
 print("Please enter the distance to mine: ")
 local distance = io.read()

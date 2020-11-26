@@ -1,17 +1,17 @@
 local component = require("component")
 local sides = require("sides")
-local robot = require("gaybot")
+local robot = require("betterbot")
 local navigation = component.navigation
-local chargerRelPos = {x=-53.5, y=69.5, z=-56.5}
+local chargerRelPos = {x=-886,y=69.5,z=135.5}
 
---[[
+--[[ Normal Side Values
     Back:   north,  negZ,   Number: 2
     Front:  south,  posZ,   Number: 3
     Right:  west,   negX,   Number: 4
     Left:   east,   posX,   Number: 5
 ]]--
 
---[[
+--[[ My Side Values
     Front:  south,  posZ,   Number: 1
     Right:  west,   negX,   Number: 2
     Back:   north,  negZ,   Number: 3
@@ -26,24 +26,17 @@ local function SideToString(number)
     return side
 end
 
-local function Mine(number)
+local function ConvertSides(number)
     if number == 3 then return 1 end
     if number == 4 then return 2 end
     if number == 2 then return 3 end
     if number == 5 then return 4 end
 end
 
-local function Yours(number)
-    if number == 1 then return 3 end
-    if number == 2 then return 4 end
-    if number == 3 then return 2 end
-    if number == 4 then return 5 end
-end
-
 -- Will face towards a given side
 local function FaceSide(side)
     local robotFacing = navigation.getFacing()
-    robotFacing = Mine(robotFacing)
+    robotFacing = ConvertSides(robotFacing)
     turns = side - robotFacing 
 
     if turns == -3 then turns = 1 end

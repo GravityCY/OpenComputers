@@ -9,10 +9,12 @@ local robot = {}
 -- == To-Do == --
 -- Add a failed attempts var to stop trying a certain operation after the said attempts
 
--- Will just make the robot go towards a direction using a direction variable
--- Is repeatable at the expense of not getting accurate failed attempt information
--- Example it tries to go 3 times forward without being able to relay information-
--- -on whether they were succesful
+--[[
+ Will just make the robot go towards a direction using a direction variable
+ Is repeatable at the expense of not getting accurate failed attempt information
+ Example it tries to go 3 times forward without being able to relay information-
+ -on whether they were succesful
+--]]
 local function go(direction, repeats)
     repeats = repeats or 1
 
@@ -32,8 +34,10 @@ local function go(direction, repeats)
     return true
 end
 
--- Will just swing towards a direction using a direction variable
--- Is repeatable at the expense of not getting accurate failed attempt information
+--[[
+    Will just swing towards a direction using a direction variable
+    Is repeatable at the expense of not getting accurate failed attempt information
+--]]
 local function swing(direction, repeats)
     repeats = repeats or 1
 
@@ -70,9 +74,12 @@ local function turn(direction, repeats)
     return true
 end
 
--- Will go towards a direction and if obstructed by specified obstacles will just pause / hang until able to move again
--- Is repeatable
--- It will only say it was succesful when it is finally able to finish the moves
+--[[
+    Will go towards a direction and if obstructed by specified obstacles will just pause / hang until able to move again
+    Is repeatable
+    It will only say it was succesful when it is finally able to finish the moves
+--]]
+
 local function goPause(direction, repeats)
     repeats = repeats or 1
 
@@ -88,11 +95,13 @@ local function goPause(direction, repeats)
     return true
 end
 
--- Will go towards a direction and if obstructed by specified obstacles-
--- -it will try to break them assuming it holds a tool capable of doing so,-
--- if not it will just pause and hang
--- Is Repeatable
--- It will only say it was succesful when it finally is able to finish the moves
+--[[
+    Will go towards a direction and if obstructed by specified obstacles-
+    -it will try to break them assuming it holds a tool capable of doing so,-
+    if not it will just pause and hang
+    Is Repeatable
+    It will only say it was succesful when it finally is able to finish the moves
+--]]
 local function goBreak(direction, repeats, hangIfUnbreakable)
     hangIfUnbreakable = hangIfUnbreakable or false
     repeats = repeats or 1
