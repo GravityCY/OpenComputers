@@ -2,10 +2,11 @@ local component = require("component")
 local robot = require("betterbot")
 
 local navigation = component.navigation
-local chargerRelPos = {x=-885.5,y=69.5,z=135.5}
 
 local sides = {forward = 0, right = 1, back = 2, left = 3, up = 4, down = 5}
 local dirs = {posZ = 1, negX = 2, negZ = 3, posX = 4}
+
+local AStar = {}
 
 --[[
     Normal Side Values
@@ -40,16 +41,6 @@ local function Copy(obj, seen)
     return res
 end
 
-local function FaceDirection(facing, dir)
-    local toFace = dir - facing
-
-    if toFace == -3 then toFace = 1 end
-    if toFace == 3 then toFace = -1 end
-
-    if toFace < 0 then robot.turnLeft(math.abs(toFace))
-    else robot.turnRight(toFace) end
-end
-
 local function GetDirection(position, target)
     local difference = {x= target.x - position.x, z= target.z - position.z}
 
@@ -58,12 +49,8 @@ local function GetDirection(position, target)
     elseif difference.z > 0 then return dirs.posZ else return dirs.negZ end
 end
 
-local function FaceTarget(facing, position, target)
-    FaceDirection(facing, GetDirection(position,target))
-end
-
 local function DumbWalkToTarget(facing, position, target)
-    FaceTarget(facing,position,target)
+    AStar.FaceTarget(facing,position,target)
     robot.forward()
 end
 
@@ -132,12 +119,26 @@ local function AccumulateScores(closePositions, openPositions, iteration, initPo
     end
 end
 
-local function WalkToTarget(target)
+function AStar.FaceDirection(facing, dir)
+    local toFace = dir - facing
+
+    if toFace == -3 then toFace = 1 end
+    if toFace == 3 then toFace = -1 end
+
+    if toFace < 0 then robot.turnLeft(math.abs(toFace))
+    else robot.turnRight(toFace) end
+end
+
+function AStar.FaceTarget(facing, position, target)
+    AStar.FaceDirection(facing, GetDirection(position,target))
+end
+-- Walks to target with surrounding data (SLOW)
+function AStar.WalkToTarget(target)
     local initX,initY,initZ = navigation.getPosition()
     local initPosition = {x=initX,y=initY,z=initZ}
     local closePositions = {[initPosition] = true}
-
     local iterations = 1
+
     while true do
         local xx,yy,zz = navigation.getPosition()
         local position = {x=xx,y=yy,z=zz}
@@ -152,7 +153,7 @@ local function WalkToTarget(target)
                 AccumulateScores(closePositions, openPositions, iterations, initPosition, position, target, facing, i - 1)
             end
         end
-
+        
         local bestKey = nil
         for k, v in pairs(openPositions) do
             if bestKey ~= nil then
@@ -160,11 +161,13 @@ local function WalkToTarget(target)
                 if v.score < openPositions[bestKey].score then bestKey = k end
             else bestKey = k end
         end
+    
         DumbWalkToTarget(facing, position, StringToVec(bestKey))
+
         AddVecTable(closePositions, bestKey)
         RemoveVecTable(openPositions, bestKey)
         iterations = iterations + 1
     end
 end
 
-WalkToTarget(chargerRelPos)
+return AStar

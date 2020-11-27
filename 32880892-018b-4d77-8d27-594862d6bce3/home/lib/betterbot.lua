@@ -248,6 +248,8 @@ function robot.select(itemSlot)
     return bot.select(itemSlot)
 end
 
+
+
 function robot.detect(filter)
     return detect("Forward", filter)
 end
@@ -270,6 +272,18 @@ end
 
 function robot.detectDown(filter)
     return detect("Down", filter)
+end
+
+function robot.detectAll(filter)
+    local values = {table.pack(robot.detect())}
+    for i = 2, 4 do 
+        robot.turnRight()
+        values[i] = table.pack(robot.detect())
+    end
+    robot.turnRight()
+    values[5] = table.pack(robot.detectUp())
+    values[6] = table.pack(robot.detectDown())
+    return values
 end
 
 return robot
