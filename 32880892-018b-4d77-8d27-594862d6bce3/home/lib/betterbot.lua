@@ -107,7 +107,7 @@ local function goPause(direction, repeats)
     repeats = repeats or 1
 
     for i = 1, repeats do
-        while true do 
+        while true do
             local success, info = robot.go(direction)
             if not success and info == obstacleInfo[2] or info == obstacleInfo[1] then
                 os.sleep(sleepTime)
@@ -130,7 +130,7 @@ local function goBreak(direction, repeats, hangIfUnbreakable)
     repeats = repeats or 1
 
     for i = 1, repeats do
-        while true do 
+        while true do
             local success, info = robot.go(direction)
             if not success and info == obstacleInfo[2] then
                 swing(direction)
@@ -184,7 +184,7 @@ function robot.forward(pauseIfObstruct, breakIfObstruct, repeats)
         return goBreak(dir, repeats, true)
     else return robot.go(dir) end
 end
-  
+
 function robot.back(pauseIfObstruct, breakIfObstruct, repeats)
     local dir = "Back"
 
@@ -206,7 +206,7 @@ end
 
 function robot.left(pauseIfObstruct, breakIfObstruct)
     bot.turnLeft()
-    return forward(pauseIfObstruct, breakIfObstruct)
+    return robot.forward(pauseIfObstruct, breakIfObstruct)
 end
 
 function robot.turnLeft(repeats)
@@ -248,8 +248,6 @@ function robot.select(itemSlot)
     return bot.select(itemSlot)
 end
 
-
-
 function robot.detect(filter)
     return detect("Forward", filter)
 end
@@ -274,9 +272,9 @@ function robot.detectDown(filter)
     return detect("Down", filter)
 end
 
-function robot.detectAll(filter)
+function robot.detectAll()
     local values = {table.pack(robot.detect())}
-    for i = 2, 4 do 
+    for i = 2, 4 do
         robot.turnRight()
         values[i] = table.pack(robot.detect())
     end

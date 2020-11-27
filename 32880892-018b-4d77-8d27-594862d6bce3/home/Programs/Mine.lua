@@ -1,4 +1,8 @@
 local robot = require("betterbot")
+local component = require("component")
+local astar = require("astar")
+local navigation = component.navigation
+
 
 print("Please enter the distance to mine: ")
 local distance = io.read()
@@ -57,6 +61,12 @@ local function DropInChest(turnAround)
     end
 
     if turnAround then robot.turnAround() return end
+
+    local lookDirection = astar.GetFacing()
+    local curPosition = astar.GetPosition()
+    os.execute("/Home/Programs/Charge")
+    astar.WalkToTarget(curPosition)
+    astar.FaceDirection(astar.GetFacing(), lookDirection)
 
     if direction == "Right" then robot.turnLeft()
     else robot.turnRight() end
