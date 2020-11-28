@@ -80,30 +80,30 @@ end
 local function GetDirection(position, target)
     local difference = {x= target.x - position.x, y= target.y - position.y, z= target.z - position.z}
     local absDifference = {x=math.abs(difference.x), y=math.abs(difference.y), z=math.abs(difference.z)}
-    if absDifference.x > absDifference.z and absDifference.x > absDifference.y then
+
+    if absDifference.x >= absDifference.z and absDifference.x >= absDifference.y then
         if difference.x > 0 then return dirs.posX else return dirs.negX end
-    elseif absDifference.z > absDifference.x and absDifference.z > absDifference.y then
-        if difference.z > 0 then return dirs.posZ else return dirs.negZ end
-    elseif absDifference.y > absDifference.x and absDifference.y > absDifference.z then
+    elseif absDifference.y >= absDifference.x and absDifference.y >= absDifference.z then
         if difference.y > 0 then return dirs.posY else return dirs.negY end
+    elseif absDifference.z >= absDifference.x and absDifference.z >= absDifference.y then
+        if difference.z > 0 then return dirs.posZ else return dirs.negZ end
     end
-     
 end
 
-local function GetTotalScore(position, target, start)
-    local startDistance = math.abs(start.x - position.x) + math.abs(start.y - position.y) + math.abs(start.z - position.z)
+local function GetTotalScore(position, target)
     local targetDistance = math.abs(target.x - position.x) + math.abs(target.y - position.y) + math.abs(target.z - position.z)
-    return targetDistance -- + startDistance
+    return targetDistance
 end
 
-local function GetRelativePosition(pos, facing, dir)
-    local out = facing + dir
-    out = (((out - 1) % (5 - 1)) + (5 - 1)) % (5 - 1) + 1
-
+local function GetRelativePosition(pos, facing, side)
     local position = Copy(pos)
 
-    if dir == sides.up then position.y = position.y + 1 return position end
-    if dir == sides.down then position.y = position.y - 1 return position end
+    if side == sides.up then position.y = position.y + 1 return position end
+    if side == sides.down then position.y = position.y - 1 return position end
+
+    local out = facing + side
+    out = (((out - 1) % (5 - 1)) + (5 - 1)) % (5 - 1) + 1
+    
     if out == dirs.negX then position.x = position.x - 1 end
     if out == dirs.negZ then position.z = position.z - 1 end
     if out == dirs.posX then position.x = position.x + 1 end
@@ -124,26 +124,27 @@ local function GetBestPosition(unlockPos)
     return StringToVec(bestKey)
 end
 
-local function DumbWalkToTarget(facing, position, target)
+local function DumbWalkToTarget(facing, position, target, pause)
+    pause = pause or false
+
     local direction = GetDirection(position, target)
-    if direction == dirs.posY then robot.go(sides.up) 
-    elseif direction == dirs.negY then robot.go(sides.down) else
+    if direction == dirs.posY then return robot.go(sides.up) 
+    elseif direction == dirs.negY then return robot.go(sides.down) else
         AStar.FaceDirection(facing, direction)
-        robot.go(sides.forward)
+        return robot.go(sides.forward, pause)
     end
 end
 
-local function AccumulateScores(lockPos, openPos, it, curPos, target, facing, start)
+local function AccumulateScores(lockPos, openPos, it, curPos, target, facing)
     local values = robot.detectAll()
     for i = 1, 6 do
         local state = values[i][2]
         if state == "passable" or state == "air" then
             local rPos = GetRelativePosition(curPos, facing, i - 1)
             if not ContainsVecTable(lockPos, rPos) then
-                local totalScore = GetTotalScore(rPos, target, start)
+                local totalScore = GetTotalScore(rPos, target)
                 AddVecTable(openPos, rPos, {score=totalScore,iter=it})
             end
-        else
         end
     end
 end
@@ -158,7 +159,7 @@ function AStar.GetFacing()
 end
 
 function AStar.FaceDirection(facing, dir)
-    if dir == dirs.posY or dir == dirs.negY then return end
+    if dir == nil or dir == dirs.posY or dir == dirs.negY then return end
 
     local toFace = dir - facing
 
@@ -171,24 +172,69 @@ end
 
 -- Walks to target with surrounding data (SLOW)
 function AStar.WalkToTarget(target)
-    local initX,initY,initZ = navigation.getPosition()
-    local sPos = {x=initX,y=initY,z=initZ}
-    local lockPos = {[sPos] = true}
+    local sX,sY,sZ = navigation.getPosition()
+    local sPos = {x=sX,y=sY,z=sZ}
+    local lPos = {[sPos] = true}
 
     local it = 1
     while true do
-        local position = AStar.GetPosition()
+        local pos = AStar.GetPosition()
         local facing = AStar.GetFacing()
-        local unlockPos = {}
+        local ulPos = {}
     
-        if position.x == target.x and position.y == target.y and position.z == target.z then break end
+        if pos.x == target.x and pos.y == target.y and pos.z == target.z then break end
 
-        AccumulateScores(lockPos,unlockPos, it ,position,target,facing,sPos)
-        local bestPos = GetBestPosition(unlockPos)  
-        DumbWalkToTarget(facing, position, bestPos)
+        AccumulateScores(lPos,ulPos, it ,pos,target,facing)
+        local bestPos = GetBestPosition(ulPos)  
+        DumbWalkToTarget(facing, pos, bestPos, true)
 
-        AddVecTable(lockPos, bestPos)
-        RemoveVecTable(unlockPos, bestPos)
+        AddVecTable(lPos, bestPos)
+        RemoveVecTable(ulPos, bestPos)
+        it = it + 1
+    end
+end
+
+-- Walks to target with trial and error (FAST, ERROR PRONE: MAKE SURE NOT TO GET IT INTO A POSITION WHERE IT CAN ONLY MOVE BACKWARDS)
+function AStar.RunToTarget(target)
+    local sX,sY,sZ = navigation.getPosition()
+    local sPos = {x=sX,y=sY,z=sZ}
+    local lPos = {}
+    lPos[sPos] = true
+
+    local prevPos
+
+    local it = 1
+    while true do
+        local pos = AStar.GetPosition()
+        local facing = AStar.GetFacing()
+        local ulPos = {}
+        local side = sides.forward
+
+        if pos.x == target.x and pos.y == target.y and pos.z == target.z then break end
+
+        local dir = GetDirection(pos, target)
+        AStar.FaceDirection(facing, dir)
+        if dir == dirs.negY then side = sides.down 
+        elseif dir == dirs.posY then side = sides.down 
+        else facing = dir end
+        local rePos = GetRelativePosition(pos, facing, side)
+        if not ContainsVecTable(lPos, rePos) and not DumbWalkToTarget(facing, pos, rePos) then 
+            local values = robot.detectAll()
+            for i = 1, 6 do
+                local state = values[i][2]
+                if state == "passable" or state == "air" then
+                    local rPos = GetRelativePosition(pos, facing, i - 1)
+                    if not ContainsVecTable(lPos, rPos) then
+                        local totalScore = GetTotalScore(rPos, target)
+                        AddVecTable(ulPos, rPos, {score=totalScore,iter=it})
+                    end
+                end
+            end
+            local bPos = GetBestPosition(ulPos)
+            DumbWalkToTarget(facing, pos, bPos, true)
+            AddVecTable(lPos, bPos, true)
+        else AddVecTable(lPos, rePos, true) end
+        prevPos = rePos
         it = it + 1
     end
 end

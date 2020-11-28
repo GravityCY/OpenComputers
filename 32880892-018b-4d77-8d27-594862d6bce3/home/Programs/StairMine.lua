@@ -11,7 +11,6 @@ local argFitPlayer = false
 local argFitEnder = false
 
 
-
 for i, v in pairs(args) do
     v:lower()
     if v == "fitplayer" then argFitPlayer = true end
@@ -67,7 +66,7 @@ local function Charge()
         os.execute("/Home/Programs/Charge")
         debug.print("Finished charging.")
         debug.print("Going back to mining area...")
-        astar.WalkToTarget(curPosition)
+        astar.RunToTarget(curPosition)
         debug.print("Arrived at mining area.")
         astar.FaceDirection(astar.GetFacing(), lookDirection)
     end
