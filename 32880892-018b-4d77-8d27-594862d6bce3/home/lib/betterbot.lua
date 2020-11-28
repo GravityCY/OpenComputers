@@ -1,8 +1,11 @@
 local bot = require("robot")
+local computer = require("computer")
+local sides = require("gsides")
 
-local obstacleInfo = {"entity", "solid"}
-
+local obstacleInfo = {entity="entity", solid="solid"}
+local sObstacleInfo = {entity="entity", block="block", fire="fire"}
 local sleepTime = 1
+local burnoutTime = 2
 
 local robot = {}
 
@@ -15,229 +18,185 @@ local robot = {}
  Example it tries to go 3 times forward without being able to relay information-
  -on whether they were succesful
 --]]
-function robot.go(direction, repeats)
+
+
+
+local function go(side, repeats)
+    side = side or sides.forward
     repeats = repeats or 1
 
     if repeats == 1 then
-        if direction == "Forward" then return bot.forward() end
-        if direction == "Back" then return bot.back() end
-        if direction == "Left" then bot.turnLeft() return bot.forward() end
-        if direction == "Right" then bot.turnRight() return bot.forward() end
-        if direction == "Up" then return bot.up() end
-        if direction == "Down" then return bot.down() end
+        if side == sides.forward then return bot.forward() end
+        if side == sides.back then return bot.back() end
+        if side == sides.left then bot.turnLeft() return bot.forward() end
+        if side == sides.right then bot.turnRight() return bot.forward() end
+        if side == sides.up then return bot.up() end
+        if side == sides.down then return bot.down() end
     else
         for i = 1, repeats do
-            if direction == "Forward" then bot.forward() end
-            if direction == "Back" then bot.back() end
-            if direction == "Left" then bot.turnLeft() bot.forward() end
-            if direction == "Right" then bot.turnRight() bot.forward() end
-            if direction == "Up" then bot.up() end
-            if direction == "Down" then bot.down() end
+            if side == sides.forward then bot.forward() end
+            if side == sides.back then bot.back() end
+            if side == sides.left then bot.turnLeft() bot.forward() end
+            if side == sides.right then bot.turnRight() bot.forward() end
+            if side == sides.up then bot.up() end
+            if side == sides.down then bot.down() end
         end
     end
     return true
 end
 
---[[
-    Will just swing towards a direction using a direction variable
-    Is repeatable at the expense of not getting accurate failed attempt information
---]]
-local function swing(direction, repeats)
+local function goPause(side, burnout, repeats )
     repeats = repeats or 1
-
-    if repeats == 1 then
-        if direction == "Forward" then return bot.swing() end
-        if direction == "Back" then bot.turnAround() success = bot.swing() bot.turnAround() return success end
-        if direction == "Up" then return bot.swingUp() end
-        if direction == "Down" then return bot.swingDown() end
-    else
-        for i = 1, repeats do
-            if direction == "Forward" then bot.swing() end
-            if direction == "Back" then bot.turnAround() bot.swing() bot.turnAround() end
-            if direction == "Up" then bot.swingUp() end
-            if direction == "Down" then bot.swingDown() end
-        end
-    end
-    return true
-end
-
-local function turn(direction, repeats)
-    repeats = repeats or 1
-
-    if repeats == 1 then
-        if direction == "Left" then return bot.turnLeft() end
-        if direction == "Right" then return bot.turnRight() end
-        if direction == "Back" then bot.turnRight() return bot.turnRight() end
-    else
-        for i = 1, repeats do
-            if direction == "Left" then bot.turnLeft() end
-            if direction == "Right" then bot.turnRight() end
-            if direction == "Back" then bot.turnRight() bot.turnRight() end
-        end
-    end
-    return true
-end
-
-local function detect(direction, filter)
-    direction = direction or "Forward"
-    if filter == nil then
-        if direction == "Forward" then return bot.detect() end
-        if direction == "Back" then turn("Back") local info = bot.detect() turn("Back") return info end
-        if direction == "Left" then turn("Left") local info = bot.detect() turn("Right") return info end
-        if direction == "Right" then turn("Right") local info = bot.detect() turn("Left") return info end
-        if direction == "Up" then return bot.detectUp() end
-        if direction == "Down" then return bot.detectDown() end
-    else
-        if direction == "Forward" then return ({bot.detect()})[2] == filter end
-        if direction == "Back" then turn("Back") local info = ({bot.detect()})[2] == filter turn("Back") return info end
-        if direction == "Left" then turn("Left") local info = ({bot.detect()})[2] == filter turn("Right") return info end
-        if direction == "Right" then turn("Right") local info = ({bot.detect()})[2] == filter turn("Left") return info end
-        if direction == "Up" then return ({bot.detectUp()})[2] == filter end
-        if direction == "Down" then return ({bot.detectDown()})[2] == filter end
-    end
-end
-
---[[
-    Will go towards a direction and if obstructed by specified obstacles will just pause / hang until able to move again
-    Is repeatable
-    It will only say it was succesful when it is finally able to finish the moves
---]]
-
-local function goPause(direction, repeats)
-    repeats = repeats or 1
-
+    burnout = burnout or false
+    local start = computer.uptime()
     for i = 1, repeats do
         while true do
-            local success, info = robot.go(direction)
-            if not success and info == obstacleInfo[2] or info == obstacleInfo[1] then
+            local moveSuccess, moveInfo = robot.go(side)
+            if not moveSuccess and moveInfo == obstacleInfo[2] or moveInfo == obstacleInfo[1] then
                 os.sleep(sleepTime)
             end
-            if success then break end
+            if burnout and computer.uptime() - start >= burnoutTime then return -1 end
+            if moveSuccess then break end
         end
     end
     return true
 end
 
---[[
-    Will go towards a direction and if obstructed by specified obstacles-
-    -it will try to break them assuming it holds a tool capable of doing so,-
-    if not it will just pause and hang
-    Is Repeatable
-    It will only say it was succesful when it finally is able to finish the moves
---]]
-local function goBreak(direction, repeats, hangIfUnbreakable)
+local function turn(side, repeats)
+    repeats = repeats or 1
+    side = side or sides.forward
+
+    if repeats == 1 then
+        if side == sides.left then return bot.turnLeft() end
+        if side == sides.right then return bot.turnRight() end
+        if side == sides.back then bot.turnRight() return bot.turnRight() end
+    else
+        for i = 1, repeats do
+            if side == sides.left then bot.turnLeft() end
+            if side == sides.right then bot.turnRight() end
+            if side == sides.back then bot.turnRight() bot.turnRight() end
+        end
+    end
+    return true
+end
+
+local function swing(side, repeats)
+    repeats = repeats or 1
+    side = side or sides.forward
+
+    if repeats == 1 then
+        if side == sides.forward then return bot.swing() end
+        if side == sides.back then bot.turnAround() local success = bot.swing() bot.turnAround() return success end
+        if side == sides.up then return bot.swingUp() end
+        if side == sides.down then return bot.swingDown() end
+    else
+        for i = 1, repeats do
+            if side == sides.forward then bot.swing() end
+            if side == sides.back then bot.turnAround() bot.swing() bot.turnAround() end
+            if side == sides.up then bot.swingUp() end
+            if side == sides.down then bot.swingDown() end
+        end
+    end
+    return true
+end
+
+local function goBreak(side, hangIfUnbreakable, burnout, repeats)
     hangIfUnbreakable = hangIfUnbreakable or false
     repeats = repeats or 1
 
     for i = 1, repeats do
         while true do
-            local success, info = robot.go(direction)
-            if not success and info == obstacleInfo[2] then
-                swing(direction)
-            end
-            if hangIfUnbreakable and not success then success = goPause(direction) end
-            if success then break end
+            local moveSuccess, moveInfo = go(side)
+            if not moveSuccess and moveInfo == obstacleInfo.solid then 
+                local swingSuccess = swing(side)
+                if not swingSuccess then 
+                    if hangIfUnbreakable then
+                        goPause(side, burnout, repeats)
+                    else return false end
+                end
+            elseif not moveSuccess and moveInfo == obstacleInfo.entity then goPause(side) end
+            if moveSuccess then return true end
         end
     end
     return true
 end
 
-function robot.up(pauseIfObstruct, breakIfObstruct, repeats)
-    local dir = "Up"
+local function detect(side, filter)
+    side = side or sides.forward
+    filter = filter or nil
 
+    if filter == nil then
+        if side == sides.forward then return bot.detect() end
+        if side == sides.back then turn(sides.back) local info = bot.detect() turn(sides.back) return info end
+        if side == sides.left then turn(sides.left) local info = bot.detect() turn(sides.right) return info end
+        if side == sides.right then turn(sides.right) local info = bot.detect() turn(sides.left) return info end
+        if side == sides.up then return bot.detectUp() end
+        if side == sides.down then return bot.detectDown() end
+    else
+        if side == sides.forward then return ({bot.detect()})[2] == filter end
+        if side == sides.back then turn(sides.back) local info = ({bot.detect()})[2] == filter turn(sides.back) return info end
+        if side == sides.left then turn(sides.left) local info = ({bot.detect()})[2] == filter turn(sides.right) return info end
+        if side == sides.right then turn(sides.right) local info = ({bot.detect()})[2] == filter turn(sides.left) return info end
+        if side == sides.up then return ({bot.detectUp()})[2] == filter end
+        if side == sides.down then return ({bot.detectDown()})[2] == filter end
+    end
+end
+
+local function drop(side, amount)
+    side = side or sides.forward
+    amount = amount or 1
+
+    if side == sides.forward then return bot.drop(amount) end
+    if side == sides.back then turn(sides.back) local info = bot.drop(amount) turn(sides.back) return info end
+    if side == sides.left then turn(sides.left) local info = bot.drop(amount) turn(sides.right) return info end
+    if side == sides.right then turn(sides.right) local info = bot.drop(amount) turn(sides.left) return info end
+    if side == sides.up then return bot.dropUp(amount) end
+    if side == sides.down then return bot.dropDown(amount) end
+end
+
+-- = { PUBLIC FUNCTIONS } = --
+
+function robot.go(side, pauseIfObstruct, breakIfObstruct, hangIfUnbreakable, burnout, repeats)
     pauseIfObstruct = pauseIfObstruct or false
     breakIfObstruct = breakIfObstruct or false
+    hangIfUnbreakable = hangIfUnbreakable or false
 
     if pauseIfObstruct then
-        return goPause(dir, repeats)
-    end
-    if breakIfObstruct then
-        return goBreak(dir, repeats, true)
-    else return robot.go(dir) end
+        return goPause(side, burnout, repeats)
+    elseif breakIfObstruct then
+        return goBreak(side, hangIfUnbreakable, burnout, repeats)
+    else return go(side,repeats) end
 end
 
-function robot.down(pauseIfObstruct, breakIfObstruct, repeats)
-    local dir = "Down"
-
-    local pauseIfObstruct = pauseIfObstruct or false
-    local breakIfObstruct = breakIfObstruct or false
-
-    if pauseIfObstruct then
-        return goPause(dir, repeats)
-    end
-    if breakIfObstruct then
-        return goBreak(dir, repeats, true)
-    else return robot.go(dir) end
+function robot.turn(side, repeats)
+    return turn(side, repeats)
 end
 
-
-function robot.forward(pauseIfObstruct, breakIfObstruct, repeats)
-    local dir = "Forward"
-
-    pauseIfObstruct = pauseIfObstruct or false
-    breakIfObstruct = breakIfObstruct or false
-
-    if pauseIfObstruct then
-        return goPause(dir, repeats)
-    end
-    if breakIfObstruct then
-        return goBreak(dir, repeats, true)
-    else return robot.go(dir) end
+function robot.swing(side, repeats)
+    return swing(side, repeats)
 end
 
-function robot.back(pauseIfObstruct, breakIfObstruct, repeats)
-    local dir = "Back"
-
-    pauseIfObstruct = pauseIfObstruct or false
-    breakIfObstruct = breakIfObstruct or false
-
-    if pauseIfObstruct then
-        return goPause(dir, repeats)
-    end
-    if breakIfObstruct then
-        return goBreak(dir, repeats, true)
-    else return robot.go(dir) end
+function robot.detect(side, filter)
+    return detect(side, filter)
 end
 
-function robot.right(pauseIfObstruct, breakIfObstruct)
-    bot.turnRight()
-    return robot.forward(pauseIfObstruct, breakIfObstruct)
+function robot.detectAll()
+    local values = {}
+    values[1] = table.pack(robot.detect())
+    robot.turn(sides.right)
+    values[2] = table.pack(robot.detect())
+    robot.turn(sides.right)
+    values[3] = table.pack(robot.detect())
+    robot.turn(sides.right)
+    values[4] = table.pack(robot.detect())
+    robot.turn(sides.right)
+    values[5] = table.pack(robot.detect(sides.up))
+    values[6] = table.pack(robot.detect(sides.down))
+    return values
 end
 
-function robot.left(pauseIfObstruct, breakIfObstruct)
-    bot.turnLeft()
-    return robot.forward(pauseIfObstruct, breakIfObstruct)
-end
-
-function robot.turnLeft(repeats)
-    return turn("Left", repeats)
-end
-
-function robot.turnRight(repeats)
-    return turn("Right", repeats)
-end
-
-function robot.turnAround(repeats)
-    return bot.turn("Back", repeats)
-end
-
-function robot.drop()
-    return bot.drop()
-end
-
-function robot.swing(repeats)
-    local dir = "Forward"
-    return swing(dir, repeats)
-end
-
-function robot.swingUp(repeats)
-    local dir = "Up"
-    return swing(dir, repeats)
-end
-
-function robot.swingDown(repeats)
-    local dir = "Down"
-    return swing(dir, repeats)
+function robot.drop(side, amount)
+    return drop(side, amount)
 end
 
 function robot.inventorySize()
@@ -248,40 +207,12 @@ function robot.select(itemSlot)
     return bot.select(itemSlot)
 end
 
-function robot.detect(filter)
-    return detect("Forward", filter)
+function robot.count(itemSlot)
+    return bot.count(itemSlot)
 end
 
-function robot.detectBack(filter)
-    return detect("Back", filter)
-end
-
-function robot.detectLeft(filter)
-    return detect("Left", filter)
-end
-
-function robot.detectRight(filter)
-    return detect("Right", filter)
-end
-
-function robot.detectUp(filter)
-    return detect("Up", filter)
-end
-
-function robot.detectDown(filter)
-    return detect("Down", filter)
-end
-
-function robot.detectAll()
-    local values = {table.pack(robot.detect())}
-    for i = 2, 4 do
-        robot.turnRight()
-        values[i] = table.pack(robot.detect())
-    end
-    robot.turnRight()
-    values[5] = table.pack(robot.detectUp())
-    values[6] = table.pack(robot.detectDown())
-    return values
+function robot.setBurnout(time)
+    burnoutTime = time
 end
 
 return robot

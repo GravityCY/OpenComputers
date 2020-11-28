@@ -90,9 +90,10 @@ local function GetDirection(position, target)
      
 end
 
-local function GetTotalScore(position, target)
+local function GetTotalScore(position, target, start)
+    local startDistance = math.abs(start.x - position.x) + math.abs(start.y - position.y) + math.abs(start.z - position.z)
     local targetDistance = math.abs(target.x - position.x) + math.abs(target.y - position.y) + math.abs(target.z - position.z)
-    return targetDistance
+    return targetDistance -- + startDistance
 end
 
 local function GetRelativePosition(pos, facing, dir)
@@ -125,27 +126,24 @@ end
 
 local function DumbWalkToTarget(facing, position, target)
     local direction = GetDirection(position, target)
-    if direction == dirs.posY then robot.up() 
-    elseif direction == dirs.negY then robot.down() else
+    if direction == dirs.posY then robot.go(sides.up) 
+    elseif direction == dirs.negY then robot.go(sides.down) else
         AStar.FaceDirection(facing, direction)
-        robot.forward()
+        robot.go(sides.forward)
     end
 end
 
-local function AccumulateScores(lockPos, openPos, it, curPos, target, facing)
+local function AccumulateScores(lockPos, openPos, it, curPos, target, facing, start)
     local values = robot.detectAll()
     for i = 1, 6 do
         local state = values[i][2]
         if state == "passable" or state == "air" then
-            print(sides.ToString(i) .. " is passable")
             local rPos = GetRelativePosition(curPos, facing, i - 1)
             if not ContainsVecTable(lockPos, rPos) then
-                local totalScore = GetTotalScore(rPos, target)
-                print(sides.ToString(i) .. ": " .. totalScore) 
+                local totalScore = GetTotalScore(rPos, target, start)
                 AddVecTable(openPos, rPos, {score=totalScore,iter=it})
             end
         else
-            print(sides.ToString(i) .. " is not passable")
         end
     end
 end
@@ -167,8 +165,8 @@ function AStar.FaceDirection(facing, dir)
     if toFace == -3 then toFace = 1 end
     if toFace == 3 then toFace = -1 end
 
-    if toFace < 0 then robot.turnLeft(math.abs(toFace))
-    else robot.turnRight(toFace) end
+    if toFace < 0 then robot.turn(sides.left, math.abs(toFace))
+    else robot.turn(sides.right, toFace) end
 end
 
 -- Walks to target with surrounding data (SLOW)
@@ -185,7 +183,7 @@ function AStar.WalkToTarget(target)
     
         if position.x == target.x and position.y == target.y and position.z == target.z then break end
 
-        AccumulateScores(lockPos,unlockPos, it ,position,target,facing)
+        AccumulateScores(lockPos,unlockPos, it ,position,target,facing,sPos)
         local bestPos = GetBestPosition(unlockPos)  
         DumbWalkToTarget(facing, position, bestPos)
 
@@ -194,7 +192,5 @@ function AStar.WalkToTarget(target)
         it = it + 1
     end
 end
-
-
 
 return AStar
