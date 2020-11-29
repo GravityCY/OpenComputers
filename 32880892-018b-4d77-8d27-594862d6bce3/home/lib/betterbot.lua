@@ -86,15 +86,16 @@ end
 local function goPause(side, burnout, repeats )
     repeats = repeats or 1
     burnout = burnout or false
+    
     local start = computer.uptime()
     for i = 1, repeats do
         while true do
-            local moveSuccess, moveInfo = robot.go(side)
-            if not moveSuccess and moveInfo == obstacleInfo[2] or moveInfo == obstacleInfo[1] then
+            local moveSuccess, moveInfo = go(side)
+            if not moveSuccess and moveInfo == obstacleInfo.entity then
                 os.sleep(sleepTime)
             end
-            if burnout and computer.uptime() - start >= burnoutTime then return -1 end
             if moveSuccess then break end
+            if burnout and computer.uptime() - start >= burnoutTime then return -1 end
         end
     end
     return true

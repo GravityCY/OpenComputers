@@ -3,12 +3,15 @@ local computer = require("computer")
 local astar = require("astar")
 local shell = require("shell")
 local sides = require("gsides")
+local thread = require("thread")
+local event = require("event")
 local debug = require("debug")
 
 local args = shell.parse(...)
 
 local argFitPlayer = false
 local argFitEnder = false
+local argPlaceTorches = false
 
 
 for i, v in pairs(args) do
@@ -63,6 +66,18 @@ local function Charge()
         local lookDirection = astar.GetFacing()
         local curPosition = astar.GetPosition()
         debug.print("Running out of energy. Starting to go towards charging station...")
+        
+        thread.create(function() 
+            event.pull("arrived_charger")
+            local arriveTime = computer.uptime()
+            print("Arrived at charging station")
+            event.pull("leaving_charger")
+            print("Leaving from charging station")
+            local leaveTime = computer.uptime()
+            print("Took a total of " .. leaveTime - arriveTime .. " seconds")
+         end)
+
+        os.execute("/Home/Programs/Charge")
         os.execute("/Home/Programs/Charge")
         debug.print("Finished charging.")
         debug.print("Going back to mining area...")
